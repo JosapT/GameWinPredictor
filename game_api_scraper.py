@@ -1,65 +1,52 @@
-import os
-import requests
-from bs4 import BeautifulSoup
-import json
-from dotenv import load_dotenv
+import pandas as pd
 
 
-def get_r6siege_profile(username):
+def get_nba_data():
     """
-    Returns the R6 Siege profile URL for a given username.
+    Fetches NBA game data from a CSV file and returns it as a pandas DataFrame.
     
-    :param username: The username of the player.
-    :return: The URL to the player's R6 Siege profile.
+    Returns:
+        pd.DataFrame: DataFrame containing NBA game data.
     """
-    if not username:
-        raise ValueError("Username cannot be empty.")
-    
-    # Construct the URL for the R6 Siege profile
-
-    base_link_r6 = f"https://r6.tracker.network/r6siege/profile/ubi/{username}/overview"
-
-    return base_link_r6
-
-
-def get_r6siege_kd(profile):
-    """
-    Returns the K/D ratio from the R6 Siege profile.
-    
-    :param profile: The URL to the player's R6 Siege profile.
-    :return: The K/D ratio as a string.
-    """
-    if not profile:
-        raise ValueError("Profile URL cannot be empty.")
-    
-    # Extract the K/D ratio from the profile page
     try:
-        load_dotenv()
-        headers = {
-            "TRN-Api-Key": os.getenv("TRACKER_API_KEY"),
-        }
-        print("API Key: " + str(headers["TRN-Api-Key"]))
-        response = requests.get(profile, headers=headers)
-        print("TEST " + response.json())
-        # soup = BeautifulSoup(response.text, 'html.parser')
-        # print("TEST " + soup)
-        # kd_element = soup.find('div', class_='kd')
-        # if kd_element:
-        #     return kd_element.text.strip()
-        # else:
-        #     raise ValueError("K/D ratio not found in the profile.")
-    
-    except requests.RequestException as e:
-        raise ValueError(f"Error fetching profile data: {e}")
-    
+        df = pd.read_csv('nba_games.csv', index_col=0)
+        df = df.sort_values("date")
+        df = df.reset_index(drop=True) #change index to be sequential
 
-if __name__ == "__main__":
-    # Example usage
-    username = "UhhYeah-"
-    profile_url = get_r6siege_profile(username)
-    print(f"Profile URL: {profile_url}")
+        #deleting extra columns that are not needed
+        del df["mp.1"]
+        del df["mp_opp.1"]
+        del df["index_opp"]
+
+        #returns the dataframe with the game data
+        return df
     
-    try:
-        kd_ratio = get_r6siege_kd(profile_url)
-    except ValueError as e:
-        print(e)
+    except FileNotFoundError:
+        print("The file 'nba_games.csv' does not exist. Please check the file path.")
+        return pd.DataFrame()  # Return an empty DataFrame if the file is not found
+
+
+def add_target(team):
+    team["target"] = team["won"].shift(-1)
+    return team
+
+
+def clean_team_data():
+    """
+    Cleans the team data by adding a target column and removing unnecessary columns.
+    
+    Returns:
+        pd.DataFrame: Cleaned DataFrame with team data.
+    """
+    df = get_nba_data()
+    
+    # Adding target column
+    df = add_target(df)
+    
+    
+    return df
+
+
+
+
+
